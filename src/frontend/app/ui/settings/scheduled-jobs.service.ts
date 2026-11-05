@@ -197,6 +197,10 @@ export class ScheduledJobsService {
 
   private incSubscribers(): void {
     this.subscribers++;
+    // the progress of a job is keyed by its config, so the first subscriber (re)loads the jobs and their default configs
+    if (this.subscribers === 1) {
+      this.getAvailableJobs().catch(console.error);
+    }
     this.getProgressPeriodically();
   }
 
