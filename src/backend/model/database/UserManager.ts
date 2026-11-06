@@ -11,12 +11,33 @@ import {EncryptionManager} from '../encryption/EncryptionManager';
 
 export class UserManager {
 
+  /**
+   * A missing value would otherwise match any user (e.g.: the admin).
+   * Use IsNull() if NULL is really meant.
+   */
+  private static validateFilter(filter: FindOptionsWhere<UserEntity | UserDTO>): void {
+    const missing = Object.keys(filter).filter(k => (filter as Record<string, unknown>)[k] === undefined ||
+      (filter as Record<string, unknown>)[k] === null);
+    if (missing.length > 0) {
+      throw new Error('Invalid user filter, missing value for: ' + missing.join(', '));
+    }
+  }
+
+  private static validateId(id: number): void {
+    if (!Number.isInteger(id)) {
+      throw new Error('Invalid user id: ' + id);
+    }
+  }
 
   public async findOne(filter: FindOptionsWhere<UserEntity>): Promise<UserEntity> {
     const connection = await SQLConnection.getConnection();
     const verifyPassword = typeof filter.password == 'string';
     const pass = filter.password as string;
     delete filter.password;
+    UserManager.validateFilter(filter);
+    if (Object.keys(filter).length === 0) {
+      throw new Error('Invalid user filter, it is empty');
+    }
     const user = await connection.getRepository(UserEntity).findOneBy(filter);
 
     if (verifyPassword && !PasswordHelper.comparePassword(pass, user.password)) {
@@ -26,6 +47,7 @@ export class UserManager {
   }
 
   public async find(filter: FindOptionsWhere<UserDTO>): Promise<UserEntity[]> {
+    UserManager.validateFilter(filter);
     const connection = await SQLConnection.getConnection();
     return await connection.getRepository(UserEntity).findBy(filter);
   }
@@ -48,9 +70,13 @@ export class UserManager {
   }
 
   public async deleteUser(id: number): Promise<UserEntity> {
+    UserManager.validateId(id);
     const connection = await SQLConnection.getConnection();
     const user = await connection.getRepository(UserEntity).findOneBy({id});
-    if (user && EncryptionManager.isEnabled() && user.name === EncryptionManager.getUnlockUser()) {
+    if (!user) {
+      throw new Error('User not found');
+    }
+    if (EncryptionManager.isEnabled() && user.name === EncryptionManager.getUnlockUser()) {
       throw new Error('"' + user.name + '" unlocks the encrypted gallery, it can not be deleted. ' +
         'Decrypt the gallery with the EncryptGallery tool first.');
     }
@@ -61,9 +87,13 @@ export class UserManager {
   }
 
   public async changeRole(id: number, newRole: UserRoles): Promise<UserEntity> {
+    UserManager.validateId(id);
     const connection = await SQLConnection.getConnection();
     const userRepository = connection.getRepository(UserEntity);
     const user = await userRepository.findOneBy({id});
+    if (!user) {
+      throw new Error('User not found');
+    }
     user.role = newRole;
     const ret = await userRepository.save(user);
     ObjectManagers.getInstance().SessionManager.invalidateSessionCache();
@@ -71,6 +101,7 @@ export class UserManager {
   }
 
   public async setOidcSubject(id: number, oidcSubject: string | null): Promise<UserEntity> {
+    UserManager.validateId(id);
     const connection = await SQLConnection.getConnection();
     const userRepository = connection.getRepository(UserEntity);
     const user = await userRepository.findOneBy({id});
@@ -82,6 +113,7 @@ export class UserManager {
   }
 
   public async updateSettings(id: number, settings: UserSettingsDTO): Promise<UserEntity> {
+    UserManager.validateId(id);
     const connection = await SQLConnection.getConnection();
     const userRepository = connection.getRepository(UserEntity);
     const user = await userRepository.findOneBy({id});
