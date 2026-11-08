@@ -150,7 +150,8 @@ export class GalleryNavigatorComponent {
         } else {
           arr.push({
             name: this.RootFolderName,
-            route: isParentAvailable(0) ? '/' : null,
+            // the folder is one URL segment: '/' would be encoded to /gallery/%2F
+            route: isParentAvailable(0) ? '' : null,
           });
         }
 
@@ -170,7 +171,7 @@ export class GalleryNavigatorComponent {
         });
 
         // parent directory has a shortcut to navigate to
-        if (arr.length >= 2 && arr[arr.length - 2].route) {
+        if (arr.length >= 2 && arr[arr.length - 2].route !== null) {
           this.parentPath = arr[arr.length - 2].route;
           arr[arr.length - 2].title = $localize`key: alt + up`;
         }
@@ -299,7 +300,7 @@ export class GalleryNavigatorComponent {
 
 
   navigateToParentDirectory() {
-    if (!this.parentPath) {
+    if (this.parentPath === null) {
       return;
     }
     this.router.navigate(['/gallery', this.parentPath],
