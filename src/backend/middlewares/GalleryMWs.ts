@@ -67,10 +67,10 @@ export class GalleryMWs {
     next: NextFunction
   ): Promise<void> {
     const directoryName = req.params['directory'] || '/';
-    const absoluteDirectoryName = path.join(
-      ProjectPath.ImageFolder,
-      directoryName
-    );
+    const absoluteDirectoryName = ProjectPath.resolveInImageFolder(directoryName);
+    if (!absoluteDirectoryName) {
+      return AuthenticationMWs.directoryNotFound(res, next);
+    }
     // set by AuthenticationMWs.authoriseDirectory
     const access = req.directoryAccess ?? DirectoryAccessTypes.available;
     try {
@@ -334,13 +334,13 @@ export class GalleryMWs {
     if (!req.params['mediaPath']) {
       return next();
     }
-    const fullMediaPath = path.join(
-      ProjectPath.ImageFolder,
-      req.params['mediaPath']
-    );
+    const fullMediaPath = ProjectPath.resolveInImageFolder(req.params['mediaPath']);
 
     // check if file exist
     try {
+      if (!fullMediaPath) {
+        throw new Error('Path is outside of the image folder');
+      }
       if ((await fsp.stat(fullMediaPath)).isDirectory()) {
         return next();
       }

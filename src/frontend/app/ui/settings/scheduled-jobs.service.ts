@@ -136,7 +136,8 @@ export class ScheduledJobsService {
           ))
       ) {
         this.onJobFinish.emit(prg);
-        if (this.progress.value[prg].state === JobProgressStates.failed) {
+        // a job that is gone from the new progress (e.g. the placeholder of a quick job) finished
+        if (this.progress.value[prg]?.state === JobProgressStates.failed) {
           this.notification.warning(
             $localize`Job failed` +
             ': ' +
@@ -196,6 +197,10 @@ export class ScheduledJobsService {
 
   private incSubscribers(): void {
     this.subscribers++;
+    // the progress of a job is keyed by its config, so the first subscriber (re)loads the jobs and their default configs
+    if (this.subscribers === 1) {
+      this.getAvailableJobs().catch(console.error);
+    }
     this.getProgressPeriodically();
   }
 

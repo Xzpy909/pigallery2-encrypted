@@ -43,8 +43,10 @@ export class UploadManager {
       throw new Error('Upload is disabled');
     }
     const directory = directoryIn || '';
-    const relativeDir = directory;
-    const fullDirPath = path.join(ProjectPath.ImageFolder, relativeDir);
+    const fullDirPath = ProjectPath.resolveInImageFolder(directory);
+    if (!fullDirPath) {
+      throw new Error('Invalid upload path: ' + directory);
+    }
     // the target of the files, it can be a new folder inside the upload directory
     const folder = UploadManager.sanitizeRelativeDir(uploadedFolder);
     const targetDirectory = folder ? path.join(directory, folder) : directory;
@@ -74,8 +76,10 @@ export class UploadManager {
   }
 
   public async saveFile(directory: string, file: Express.Multer.File): Promise<void> {
-    const relativeDir = directory || '';
-    const fullDirPath = path.resolve(path.join(ProjectPath.ImageFolder, relativeDir));
+    const fullDirPath = ProjectPath.resolveInImageFolder(directory);
+    if (!fullDirPath) {
+      throw new Error('Invalid upload path: ' + directory);
+    }
 
     const filename = file.originalname;
     // the filename must be a plain name, no path components

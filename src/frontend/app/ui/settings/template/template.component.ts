@@ -116,6 +116,8 @@ export class TemplateComponent implements OnInit, OnChanges, OnDestroy, ISetting
   }
 
   // Side effect: subscribes to the settings slice of the new config path.
+  private subscribedToJobs = false;
+
   ngOnChanges(): void {
     const ConfigPath = this.ConfigPath();
     if (!ConfigPath) {
@@ -149,6 +151,9 @@ export class TemplateComponent implements OnInit, OnChanges, OnDestroy, ISetting
       return;
     }
     this.getSettings();
+    // the card's jobs show their progress, also when the Jobs card (that subscribes too) is hidden
+    this.jobsService.subscribeToProgress();
+    this.subscribedToJobs = true;
 
     // TODO: fix after this issue is fixed: https://github.com/angular/angular/issues/24818
     this.subscription = this.form().valueChanges.subscribe(() => {
@@ -159,6 +164,9 @@ export class TemplateComponent implements OnInit, OnChanges, OnDestroy, ISetting
   }
 
   ngOnDestroy(): void {
+    if (this.subscribedToJobs) {
+      this.jobsService.unsubscribeFromProgress();
+    }
     if (this.subscription != null) {
       this.subscription.unsubscribe();
     }
